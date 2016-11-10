@@ -1,0 +1,1 @@
+"./vectors_intr.obj" "./psc.obj" "./main.obj" "./gpio.obj" "./L138_LCDK_switch_led.obj" "./L138_LCDK_aic3106_init.obj" "../linker_dsp.cmd" -l"C:\ti\OMAPL138_StarterWare_1_10_04_01\binary\c674x\cgt_ccs\omapl138\drivers\Debug\drivers.lib" -l"C:\Users\EE113D\MyProjects\OMAP-L138_GEL_BSL_Files\bsl\lib\evmomapl138_bsl.lib" -l"rts6740.lib" 
