@@ -12,6 +12,7 @@
 #define K 513
 #define SAMPLELEN 16000
 #define PI 3.141592654
+#define N 26
 
 #include <math.h>
 #include "L138_LCDK_aic3106_init.h"
@@ -28,6 +29,8 @@ int record; 	//-1 no recording available
 int16_t left_sample;
 int16_t sample[SAMPLELEN];
 double hamming[FRAMELENGTH];
+int PHI[N+2];
+double Y[N];
 //double ARR[FRAMELENGTH];
 
 COMPLEX twiddle[FRAMELENGTH];
@@ -92,11 +95,14 @@ void main()
 	{
 		twiddle[i].real = cos(PI*i/FRAMELENGTH);
 		twiddle[i].imag = -sin(PI*i/FRAMELENGTH);
-	}
-
-	for(i=0; i < FRAMELENGTH; i++){
 		hamming[i] = 0.46 - 0.54*cos(2*PI*i/(FRAMELENGTH-1));
 	}
+
+	for(i = 0; i < (N+2); i++)
+		PHI[i] = (i/27)*513;
+
+	for(i = 0; i < N; i++)
+		Y[i] = 0;
 
 	L138_initialise_intr(FS_16000_HZ,ADC_GAIN_24DB,DAC_ATTEN_0DB,LCDK_MIC_INPUT);
 
@@ -110,7 +116,14 @@ void main()
 			fft(frame, FRAMELENGTH, twiddle);
 
 			for(i = 0; i < FRAMELENGTH; i++){
-				mag[i] = sqrt(frame[i].real*frame[i].real + frame[i].imag*frame[i].imag);
+				mag[i] = (frame[i].real*frame[i].real + frame[i].imag*frame[i].imag);
+			}
+
+			int m, k;
+			for(m = 1; m < N+1; m++){
+				for(k = PHI[m-1]; k < PHI[m+1]; k++){
+
+				}
 			}
 
 			record = -1;
