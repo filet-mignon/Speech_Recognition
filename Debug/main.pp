@@ -25,6 +25,7 @@ main.obj: C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138
 main.obj: C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138_mcasp.h
 main.obj: C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138_aic3106.h
 main.obj: ../fft.h
+main.obj: C:/ti/ccsv5/tools/compiler/c6000_7.4.4/include/stdio.h
 
 ../main.c: 
 C:/ti/ccsv5/tools/compiler/c6000_7.4.4/include/math.h: 
@@ -51,3 +52,4 @@ C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138_i2c.h:
 C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138_mcasp.h: 
 C:/Users/EE113D/MyProjects/OMAP-L138_GEL_BSL_Files/bsl/inc/evmomapl138_aic3106.h: 
 ../fft.h: 
+C:/ti/ccsv5/tools/compiler/c6000_7.4.4/include/stdio.h: 
