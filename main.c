@@ -20,14 +20,16 @@
 #include "fft.h"
 #include "stdio.h"
 
+double minDist = 300000000;
+double distance = 0;
+
 int sum;
 int counter;
-int playback;
-int reset;
-int yesno;
-int input;
-int sel_index;
-int record; 	//-1 no recording available
+volatile int playback;
+volatile int reset;
+volatile int yesno;
+volatile int min_index;
+volatile int record; 	//-1 no recording available
 					//1 currently recording
 					//0 recording processed
 char* sound;
@@ -39,14 +41,16 @@ char* sound_4 = "xx";
 
 int16_t left_sample;
 int16_t sample[SAMPLELEN];
-double hamming[FRAMELENGTH];
+float hamming[FRAMELENGTH];
+float testArr[FRAMELENGTH];
+
 int PHI[N+2];
 int MEL[N+2];
-double MU[N+2];
-double Y[N];
-double X[N];
-double MFCC[N/2];
-double DATABASE[4][14];				//ah = 0
+float MU[N+2];
+float Y[N];
+float X[N];
+float MFCC[N/2];
+float DATABASE[4][14];				//ah = 0
 									//eh = 1
 									//ee = 2
 									//oo = 3
@@ -55,7 +59,7 @@ double DATABASE[4][14];				//ah = 0
 COMPLEX twiddle[FRAMELENGTH];
 COMPLEX frame[FRAMELENGTH];
 
-double mag[FRAMELENGTH];
+float mag[FRAMELENGTH];
 
 char* state_0 = "No active task";
 char* state_1 = "Recording";
@@ -69,41 +73,7 @@ char* state_message;
 
 interrupt void interrupt4(void)
 {
-	if (reset == 1){
-		record = -1;
-		playback = 0;
-		counter = -1;
-		input = -1;
-		reset = 0;
-		sound = sound_4;
-		state_message = state_0;
-	}
-	left_sample = 0;
-	sum = record + playback;
-	if (sum > 1){
-		record = -1;
-		playback = 0;
-		counter = -1;
-		input = -1;
-		reset = 0;
-	}
-	else if (sum == 1){
-		if (record == 1){
-			state_message = state_1;
-			counter++;
-			//Collects a 1 second sample
-			if(counter > 100 && counter< (100+SAMPLELEN))
-			{
-//				LCDK_LED_on(4);
-				left_sample = input_left_sample();
-				sample[(counter-101)] = left_sample;
-			}
-			else if(counter >= (100+SAMPLELEN)){
-				record = 0;
-				counter = -1;
-//				LCDK_LED_off(4);
-			}
-		}
+/*
 		if (playback == 1){
 			counter++;
 			if(counter < SAMPLELEN){
@@ -113,26 +83,45 @@ interrupt void interrupt4(void)
 				playback = 0;
 				counter = -1;
 			}
-		}
-	}
 
-	output_left_sample(left_sample);
+*/
+	if(reset == 1)
+	{
+		record = -1;
+		reset = 0;
+	}
+	if(record == 1){
+		state_message = state_1;
+		counter++;
+		if(counter < 500)
+			;
+		else if(counter < 500+SAMPLELEN){
+			sample[counter-500] = input_left_sample();
+		}else{
+			record = 0;
+			counter = -1;
+		}
+		output_left_sample(input_left_sample());
+	}else{
+		output_left_sample(0);
+	}
 	return;
 }
 
 void main()
 {
 	sum = 0;
-	counter = 0;
+	counter = -1;
 	playback = 0;
 	record = -1;
-	input = -1;
 	yesno = -1;
+	min_index = -1;
 
-//	LCDK_LED_init();
+	//LCDK_LED_init();
 
 	int i, m, k;
-
+	for(i = 0; i < SAMPLELEN; i++)
+		sample[i] = 0;
 	//Set up FFT twiddle factors
 	for(i = 0; i < FRAMELENGTH; i++)
 	{
@@ -161,38 +150,54 @@ void main()
 	L138_initialise_intr(FS_16000_HZ,ADC_GAIN_24DB,DAC_ATTEN_0DB,LCDK_MIC_INPUT);
 
 	while(1){
+		if (reset == 1){
+			record = -1;
+			playback = 0;
+			counter = -1;
+			yesno = -1;
+			reset = 0;
+			sound = sound_4;
+			state_message = state_0;
+		}
 		if(record == 0){
 			state_message = state_2;
 			for(i = 0; i < FRAMELENGTH; i++){
-				frame[i].real = sample[i+100] * hamming[i];
+				frame[i].real = (float)sample[i]*hamming[i];
 				frame[i].imag = 0.0;
+			}
+			for(i = 0; i < FRAMELENGTH; i++){
+				testArr[i] = frame[i].real;
 			}
 
 			fft(frame, FRAMELENGTH, twiddle);
 
 			for(i = 0; i < FRAMELENGTH; i++){
-				mag[i] = (frame[i].real*frame[i].real + frame[i].imag*frame[i].imag);
+				mag[i] = sqrt(frame[i].real*frame[i].real + frame[i].imag*frame[i].imag);
 			}
 
+			for(i = 0; i < N; i++)
+					Y[i] = 0;
 			for(m = 1; m < N+1; m++){
 				for(k = PHI[m-1]; k < PHI[m]; k++){
-					Y[m] += (k-PHI[m-1])/(PHI[m]-PHI[m-1]);
+					Y[m] += (k-PHI[m-1])*mag[k]/(PHI[m]-PHI[m-1]);
 				}
 				for(k = PHI[m]; k < PHI[m+1]; k++){
-					Y[m] += (PHI[m+1]-k)/(PHI[m+1]-PHI[m]);
+					Y[m] += (PHI[m+1]-k)*mag[k]/(PHI[m+1]-PHI[m]);
 				}
 				X[m] = log10(Y[m]);
 			}
 
+			for(i = 0; i < (N/2); i++)
+					MFCC[i] = 0;
 			for(k = 1; k <= 13; k++){
 				for(m = 1; m <= N; m++){
 					MFCC[k] += X[m]*cos((m-0.5)*k*PI/26);
 				}
 			}
 
-			double minDist = 30000;
-			int min_index = -1;
-			double distance;
+			minDist = 10000;
+			min_index = -1;
+			distance = 0;
 			for(i = 0; i < 4; i++){
 				//Compare to existing values
 				//find ID with minimum distance
@@ -206,6 +211,8 @@ void main()
 					min_index = i;
 				}
 			}
+
+			sound = sound_4;
 
 			switch(min_index){
 			//Using min_index, set the sound identifier
@@ -228,8 +235,10 @@ void main()
 
 			state_message = state_3;
 
-			while(input == -1){}
-			if(input == 1){
+			while(yesno == -1){
+				state_message = state_3;
+			}
+			if(yesno == 1){
 				for(i = 0; i < 13; i++){
 					DATABASE[min_index][i] =
 							(DATABASE[min_index][13]*DATABASE[min_index][i] + MFCC[i]);
@@ -237,14 +246,15 @@ void main()
 				}
 				DATABASE[min_index][13]++;
 				state_message = state_5;
-				input = -1;
+				yesno = -1;
 				record = -1;
 			}
-			if(input == 0){
+			if(yesno == 0){
 				state_message = state_4;
 				//Ask for correct sound identifier and update data for that sound
-				while(sel_index == -1){}
-				switch(sel_index){
+				min_index = -1;
+				while(min_index == -1){}
+				switch(min_index){
 				//Using min_index, set the sound identifier
 				case 0:
 					sound = sound_0;
@@ -263,21 +273,20 @@ void main()
 					break;
 				}
 
-				sound[2] = '\0';
 				for(i = 0; i < 13; i++){
-					DATABASE[sel_index][i] =
-							(DATABASE[sel_index][13]*DATABASE[sel_index][i] + MFCC[i]);
-					DATABASE[sel_index][i] /= (DATABASE[sel_index][13]+1);
+					DATABASE[min_index][i] =
+							(DATABASE[min_index][13]*DATABASE[min_index][i] + MFCC[i]);
+					DATABASE[min_index][i] /= (DATABASE[min_index][13]+1);
 				}
-				DATABASE[sel_index][13]++;
-				sel_index = -1;
+				DATABASE[min_index][13]++;
+				min_index = -1;
 				state_message = state_5;
-				input = -1;
+				yesno = -1;
 				record = -1;
+				minDist = 1000;
+				sound = sound_4;
 			}
 		}
-		else
-			state_message = state_0;
 	}
 
 }
